@@ -1,40 +1,58 @@
 services:
-  typebot-db-docker:
+  typebot-db:
     image: postgres:16
     restart: always
     volumes:
-      - ${PWD}/.typebot-build/database:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=typebot
-      - POSTGRES_PASSWORD=typebot
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  typebot-redis:
+    image: redis:7
+    restart: always
+    volumes:
+      - redis-data:/var/lib/redis/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   typebot-builder:
-    build:
-      context: .
-      args:
-        - SCOPE=builder
+    image: baptistearno/typebot-builder:latest
     depends_on:
-      typebot-db-docker:
+      typebot-db:
+        condition: service_healthy
+      typebot-redis:
         condition: service_healthy
     restart: always
-    ports:
-      
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    env_file: .env.docker
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@typebot-db:5432/typebot
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXT_PUBLIC_VIEWER_URL=${NEXT_PUBLIC_VIEWER_URL}
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+
   typebot-viewer:
-    build:
-      context: .
-      args:
-        - SCOPE=viewer
+    image: baptistearno/typebot-viewer:latest
     depends_on:
-      typebot-db-docker:
+      typebot-db:
+        condition: service_healthy
+      typebot-redis:
         condition: service_healthy
     restart: always
-    ports:
-      
-    env_file: .env.docker
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@typebot-db:5432/typebot
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXT_PUBLIC_VIEWER_URL=${NEXT_PUBLIC_VIEWER_URL}
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
+
+volumes:
+  db-data:
+  redis-data:
