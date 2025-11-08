@@ -36,5 +36,5 @@ services:
         condition: service_healthy
     restart: always
     ports:
-      - "8081:3000"
+      
     env_file: .env.docker
