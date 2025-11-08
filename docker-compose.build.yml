@@ -1,18 +1,4 @@
 services:
-  typebot-db:
-    image: postgres:16
-    restart: always
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=typebot
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   typebot-redis:
     image: redis:7
     restart: always
@@ -27,13 +13,11 @@ services:
   typebot-builder:
     image: baptistearno/typebot-builder:latest
     depends_on:
-      typebot-db:
-        condition: service_healthy
       typebot-redis:
         condition: service_healthy
     restart: always
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@typebot-db:5432/typebot
+      - DATABASE_URL=${DATABASE_URL}
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXT_PUBLIC_VIEWER_URL=${NEXT_PUBLIC_VIEWER_URL}
       - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
@@ -42,17 +26,14 @@ services:
   typebot-viewer:
     image: baptistearno/typebot-viewer:latest
     depends_on:
-      typebot-db:
-        condition: service_healthy
       typebot-redis:
         condition: service_healthy
     restart: always
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@typebot-db:5432/typebot
+      - DATABASE_URL=${DATABASE_URL}
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXT_PUBLIC_VIEWER_URL=${NEXT_PUBLIC_VIEWER_URL}
       - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
 
 volumes:
-  db-data:
   redis-data:
